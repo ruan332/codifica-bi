@@ -1,111 +1,12 @@
 import { supabase, supabaseAdmin } from '../lib/supabase';
-import { MockAuthService } from './mockAuth';
 import type { LoginCredentials, AuthUser } from '../types';
 
-// Flag para controlar se deve usar modo mock
-let useMockMode = false; // Será definido automaticamente baseado na conectividade
-
-// Cache para evitar múltiplas verificações
-let connectionTestResult: { tested: boolean; shouldUseMock: boolean } = { tested: false, shouldUseMock: false };
-
-// Forçar uso do Supabase real (remover modo mock completamente)
-useMockMode = false;
-connectionTestResult = { tested: true, shouldUseMock: false };
-console.log('[AuthService] Forçando uso do Supabase real - modo mock desabilitado');
-
-
-
-// Função para detectar se deve usar modo mock
-const shouldUseMock = async (): Promise<boolean> => {
-  // Se já foi forçado para mock, usar mock
-  if (useMockMode) {
-    console.log('[AuthService] Modo mock forçado');
-    return true;
-  }
-  
-  // Usar cache se já testou
-  if (connectionTestResult.tested) {
-    console.log('[AuthService] Usando resultado em cache:', connectionTestResult.shouldUseMock ? 'MOCK' : 'SUPABASE');
-    return connectionTestResult.shouldUseMock;
-  }
-  
-  try {
-    // Verificar se as variáveis de ambiente estão configuradas
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey || 
-        supabaseUrl.includes('your-project') || 
-        supabaseKey.includes('your-anon-key')) {
-      console.warn('[AuthService] Variáveis de ambiente não configuradas, usando modo mock');
-      connectionTestResult = { tested: true, shouldUseMock: true };
-      return true;
-    }
-    
-    // Testar conectividade com timeout mais longo
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    try {
-      console.log('[AuthService] Testando conectividade com Supabase...');
-      const { data, error } = await supabase
-        .rpc('test_connectivity')
-        .abortSignal(controller.signal);
-      
-      clearTimeout(timeoutId);
-      
-      if (error) {
-        console.warn('[AuthService] Erro na consulta:', error.code, error.message);
-        
-        // Códigos de erro que indicam problemas de configuração
-        if (error.message.includes('function "test_connectivity" does not exist')) {
-          console.warn('[AuthService] Função test_connectivity não existe, usando modo mock');
-        } else if (error.code === '42501' ||   // Permissão negada
-                   error.code === 'PGRST301') { // JWT inválido
-          console.warn('[AuthService] Problema de configuração detectado, usando modo mock');
-        }
-        useMockMode = true;
-        connectionTestResult = { tested: true, shouldUseMock: true };
-        return true;
-      }
-      
-      if (data && data.status === 'connected') {
-        console.log('[AuthService] Conectividade OK, usando Supabase real');
-        connectionTestResult = { tested: true, shouldUseMock: false };
-        return false;
-      } else {
-        console.warn('[AuthService] Teste de conectividade retornou resultado inesperado:', data);
-        useMockMode = true;
-        connectionTestResult = { tested: true, shouldUseMock: true };
-        return true;
-      }
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
-        console.warn('[AuthService] Timeout na conexão, usando modo mock');
-      } else {
-        console.warn('[AuthService] Erro de conectividade, usando modo mock:', error.message);
-      }
-      useMockMode = true;
-      connectionTestResult = { tested: true, shouldUseMock: true };
-      return true;
-    }
-  } catch (error) {
-    console.warn('[AuthService] Erro ao verificar conectividade, usando modo mock:', error);
-    useMockMode = true;
-    connectionTestResult = { tested: true, shouldUseMock: true };
-    return true;
-  }
-};
 
 export class AuthService {
   // Login do usuário
   static async login(credentials: LoginCredentials): Promise<AuthUser> {
-    if (await shouldUseMock()) {
-      console.log('[AuthService] Usando modo mock para login');
-      return MockAuthService.login(credentials);
-    }
-
+    console.log('[AuthService] Fazendo login com Supabase...');
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
@@ -141,11 +42,6 @@ export class AuthService {
   static async logout(): Promise<void> {
     console.log('[AuthService] Iniciando processo de logout...');
     
-    if (await shouldUseMock()) {
-      console.log('[AuthService] Usando modo mock para logout');
-      return MockAuthService.logout();
-    }
-
     console.log('[AuthService] Chamando supabase.auth.signOut()...');
     const { error } = await supabase.auth.signOut();
     
@@ -162,10 +58,6 @@ export class AuthService {
     try {
       console.log('[AuthService] Iniciando verificação de usuário atual...');
       
-      if (await shouldUseMock()) {
-        console.log('[AuthService] Usando modo mock para getCurrentUser');
-        return MockAuthService.getCurrentUser();
-      }
       
       // Timeout para evitar travamento
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -249,10 +141,8 @@ export class AuthService {
             if (error.code === 'PGRST116' || // Tabela não encontrada
                 error.code === '42P01' ||   // Tabela não existe
                 error.code === '42501') {   // Permissão negada
-              console.warn('[AuthService] Problema estrutural detectado, mudando para modo mock');
-              useMockMode = true;
-              connectionTestResult = { tested: true, shouldUseMock: true };
-              return MockAuthService.getCurrentUser();
+              console.error('[AuthService] Problema estrutural detectado:', error);
+              throw new Error('Erro de configuração do banco de dados');
             }
             
             // Para outros erros, tentar novamente
@@ -282,12 +172,10 @@ export class AuthService {
     } catch (error: any) {
       console.error('[AuthService] Erro inesperado ao obter usuário atual:', error);
       
-      // Se houve timeout ou erro crítico, mudar para modo mock
+      // Se houve timeout ou erro crítico, retornar null
       if (error.message?.includes('Timeout') || error.name === 'AbortError') {
-        console.warn('[AuthService] Timeout detectado, mudando para modo mock');
-        useMockMode = true;
-        connectionTestResult = { tested: true, shouldUseMock: true };
-        return MockAuthService.getCurrentUser();
+        console.error('[AuthService] Timeout detectado:', error);
+        return null;
       }
       
       return null;
@@ -398,11 +286,6 @@ export class AuthService {
     try {
       console.log('[AuthService] Configurando listener de mudanças de autenticação...');
       
-      if (await shouldUseMock()) {
-        console.log('[AuthService] Usando modo mock para onAuthStateChange');
-        return MockAuthService.onAuthStateChange(callback);
-      }
-      
       console.log('[AuthService] Configurando listener do Supabase...');
       return supabase.auth.onAuthStateChange(async (event, session) => {
         try {
@@ -431,11 +314,11 @@ export class AuthService {
       });
     } catch (error) {
       console.error('[AuthService] Erro ao configurar listener de autenticação:', error);
-      // Retornar um objeto mock para evitar erros
+      // Retornar um objeto para evitar erros
       return {
         data: {
           subscription: {
-            unsubscribe: () => console.log('[AuthService] Mock unsubscribe chamado')
+            unsubscribe: () => console.log('[AuthService] Unsubscribe chamado')
           }
         }
       };
@@ -485,90 +368,31 @@ export class AuthService {
         };
       }
       
-      // Teste com timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      // Teste simples de conectividade
+      const { data, error } = await supabase.auth.getSession();
       
-      try {
-        // Teste 1: Verificar se consegue chamar a função de teste
-        const { data, error } = await supabase
-          .rpc('test_connectivity')
-          .abortSignal(controller.signal);
-        
-        clearTimeout(timeoutId);
-        
-        if (error) {
-          console.error('[AuthService] Erro na conectividade:', error);
-          
-          const recommendations = [];
-          
-          switch (error.code) {
-            case 'PGRST116':
-            case '42P01':
-              recommendations.push(
-                'Execute o script supabase-setup.sql no SQL Editor do Supabase',
-                'Verifique se as tabelas foram criadas corretamente',
-                'Confirme se o projeto Supabase está ativo'
-              );
-              break;
-            case '42501':
-              recommendations.push(
-                'Configure as políticas RLS (Row Level Security)',
-                'Verifique as permissões das tabelas',
-                'Execute o script de configuração completo'
-              );
-              break;
-            case 'PGRST301':
-              recommendations.push(
-                'Verifique se a ANON_KEY está correta',
-                'Confirme se o projeto Supabase não foi pausado',
-                'Regenere as chaves de API se necessário'
-              );
-              break;
-            default:
-              recommendations.push(
-                'Verifique a conectividade com a internet',
-                'Confirme se o projeto Supabase está ativo',
-                'Verifique os logs do Supabase Dashboard'
-              );
-          }
-          
-          return {
-            success: false,
-            error: error.message,
-            details: {
-              code: error.code,
-              message: error.message,
-              details: error.details,
-              hint: error.hint
-            },
-            recommendations
-          };
-        }
-        
-        console.log('[AuthService] Conectividade OK');
-        return { 
-          success: true,
+      if (error) {
+        console.error('[AuthService] Erro na conectividade:', error);
+        return {
+          success: false,
+          error: error.message,
+          details: error,
           recommendations: [
-            'Conexão estabelecida com sucesso',
-            'Todas as operações do Supabase devem funcionar normalmente'
+            'Verifique se o projeto Supabase está ativo',
+            'Confirme se as chaves de API estão corretas',
+            'Verifique a conectividade com a internet'
           ]
         };
-      } catch (timeoutError: any) {
-        clearTimeout(timeoutId);
-        if (timeoutError.name === 'AbortError') {
-          return {
-            success: false,
-            error: 'Timeout na conexão com Supabase',
-            recommendations: [
-              'Verifique sua conexão com a internet',
-              'Confirme se a URL do Supabase está correta',
-              'Verifique se o projeto não foi pausado ou deletado'
-            ]
-          };
-        }
-        throw timeoutError;
       }
+      
+      console.log('[AuthService] Conectividade OK');
+      return { 
+        success: true,
+        recommendations: [
+          'Conexão estabelecida com sucesso',
+          'Todas as operações do Supabase devem funcionar normalmente'
+        ]
+      };
     } catch (error: any) {
       console.error('[AuthService] Erro inesperado na conectividade:', error);
       return {
@@ -582,34 +406,5 @@ export class AuthService {
         ]
       };
     }
-  }
-  
-  // Forçar reset do cache de conexão
-  static resetConnectionCache(): void {
-    connectionTestResult = { tested: false, shouldUseMock: false };
-    useMockMode = false;
-    console.log('[AuthService] Cache de conexão resetado');
-  }
-  
-  // Forçar re-teste de conectividade
-  static async forceConnectivityTest(): Promise<boolean> {
-    this.resetConnectionCache();
-    const shouldMock = await shouldUseMock();
-    console.log('[AuthService] Resultado do teste forçado:', shouldMock ? 'MOCK' : 'SUPABASE');
-    return !shouldMock;
-  }
-  
-  // Forçar modo mock (útil para desenvolvimento/demo)
-  static forceMockMode(): void {
-    console.log('[AuthService] Forçando modo mock');
-    useMockMode = true;
-    connectionTestResult = { tested: true, shouldUseMock: true };
-  }
-  
-  // Desabilitar modo mock forçado
-  static disableForcedMockMode(): void {
-    console.log('[AuthService] Desabilitando modo mock forçado');
-    useMockMode = false;
-    connectionTestResult = { tested: false, shouldUseMock: false };
   }
 }
