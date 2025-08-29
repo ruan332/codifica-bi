@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Logout</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Debug Logout</h1>
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn">Logout</button>
+    <button id="checkUserBtn">Verificar Usuário</button>
+    <div id="output"></div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://ipdkitzjcqvwyfvjbmrf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwZGtpdHpqY3F2d3lmdmpibXJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mjc3MjAsImV4cCI6MjA3MjAwMzcyMH0.kVsmJyoOdfc4bqfLIrYsf6QrtuMP7k5pBOx9HZuQkMY';
+        
+        // Substitua pelas suas credenciais reais
+        const { createClient } = supabase;
+        const client = createClient(supabaseUrl, supabaseKey);
+        
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            console.log(message);
+            output.innerHTML += '<p>' + message + '</p>';
+        }
+        
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            try {
+                log('Tentando fazer login...');
+                const { data, error } = await client.auth.signInWithPassword({
+                    email: 'admin@codifica.com',
+                    password: 'admin123'
+                });
+                
+                if (error) {
+                    log('Erro no login: ' + error.message);
+                } else {
+                    log('Login realizado com sucesso: ' + data.user.email);
+                }
+            } catch (err) {
+                log('Erro inesperado no login: ' + err.message);
+            }
+        });
+        
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                log('Tentando fazer logout...');
+                const { error } = await client.auth.signOut();
+                
+                if (error) {
+                    log('Erro no logout: ' + error.message);
+                } else {
+                    log('Logout realizado com sucesso');
+                }
+            } catch (err) {
+                log('Erro inesperado no logout: ' + err.message);
+            }
+        });
+        
+        document.getElementById('checkUserBtn').addEventListener('click', async () => {
+            try {
+                log('Verificando usuário atual...');
+                const { data: { user }, error } = await client.auth.getUser();
+                
+                if (error) {
+                    log('Erro ao verificar usuário: ' + error.message);
+                } else if (user) {
+                    log('Usuário logado: ' + user.email);
+                } else {
+                    log('Nenhum usuário logado');
+                }
+            } catch (err) {
+                log('Erro inesperado ao verificar usuário: ' + err.message);
+            }
+        });
+        
+        // Listener para mudanças de autenticação
+        client.auth.onAuthStateChange((event, session) => {
+            log(`Evento de autenticação: ${event}`);
+            if (session) {
+                log(`Sessão ativa: ${session.user.email}`);
+            } else {
+                log('Nenhuma sessão ativa');
+            }
+        });
+    </script>
+</body>
+</html>
