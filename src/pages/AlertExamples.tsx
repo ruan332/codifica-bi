@@ -34,16 +34,22 @@ export function AlertExamples() {
 
   const handleShowWithActions = () => {
     showError('Erro de conexão com o servidor.', {
-      actions: [
-        {
-          label: 'Tentar Novamente',
-          onClick: () => console.log('Tentando novamente...')
-        },
-        {
-          label: 'Cancelar',
-          onClick: () => console.log('Cancelado')
-        }
-      ]
+      actions: (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => console.log('Tentando novamente...')}
+            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+          >
+            Tentar Novamente
+          </button>
+          <button
+            onClick={() => console.log('Cancelado')}
+            className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+          >
+            Cancelar
+          </button>
+        </div>
+      )
     });
   };
 
@@ -237,13 +243,17 @@ export function AlertExamples() {
               variant="success"
               title="Deploy Realizado"
               description="A nova versão da aplicação foi implantada com sucesso em produção. Todas as funcionalidades estão operacionais."
-            />
+            >
+              Deploy concluído
+            </AlertWithDescription>
             
             <AlertWithDescription
               variant="info"
               title="Manutenção Programada"
               description="O sistema passará por manutenção no domingo das 02:00 às 06:00. Durante este período, algumas funcionalidades podem ficar indisponíveis."
-            />
+            >
+              Manutenção agendada
+            </AlertWithDescription>
           </CardContent>
         </Card>
 
@@ -258,16 +268,22 @@ export function AlertExamples() {
             <Alert
               variant="warning"
               title="Confirmação Necessária"
-              actions={[
-                {
-                  label: 'Confirmar',
-                  onClick: () => alert('Confirmado!')
-                },
-                {
-                  label: 'Cancelar',
-                  onClick: () => alert('Cancelado!')
-                }
-              ]}
+              actions={
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => alert('Confirmado!')}
+                    className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    onClick={() => alert('Cancelado!')}
+                    className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              }
             >
               Tem certeza que deseja excluir este item?
             </Alert>
@@ -275,16 +291,22 @@ export function AlertExamples() {
             <Alert
               variant="info"
               title="Atualização Disponível"
-              actions={[
-                {
-                  label: 'Atualizar Agora',
-                  onClick: () => alert('Atualizando...')
-                },
-                {
-                  label: 'Lembrar Depois',
-                  onClick: () => alert('Lembrete definido!')
-                }
-              ]}
+              actions={
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => alert('Atualizando...')}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    Atualizar Agora
+                  </button>
+                  <button
+                    onClick={() => alert('Lembrete definido!')}
+                    className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                  >
+                    Lembrar Depois
+                  </button>
+                </div>
+              }
             >
               Uma nova versão está disponível com melhorias de performance.
             </Alert>
