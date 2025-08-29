@@ -61,8 +61,17 @@ export function Login() {
   // Mostrar loading se ainda estiver verificando autenticação
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-center">
+      <div 
+        className="min-h-screen flex items-center justify-center relative"
+        style={{
+          backgroundImage: 'url(/fundo_login.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+        <div className="text-center relative z-10">
           <BarChart3 className="h-12 w-12 text-slate-600 mx-auto mb-4 animate-pulse" />
           <p className="text-slate-600">Carregando...</p>
         </div>
@@ -71,28 +80,39 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          {/* Header */}
-        <div className="text-center">
-          <div className="flex justify-center">
-            <img 
-              src="/logo.svg" 
-              alt="Codifica Analytics" 
-              className="h-16 w-auto"
-            />
-          </div>
-          <p className="mt-4 text-lg font-medium text-slate-700">
-            Inteligência em dados, resultados em ação
-          </p>
-          <p className="mt-2 text-sm text-slate-600">
-            Faça login para acessar seus relatórios
-          </p>
-        </div>
-
-        {/* Login Form */}
-        <Card className="mt-8">
+    <div 
+      className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative"
+      style={{
+        backgroundImage: 'url(/fundo_login.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Overlay for better readability */}
+      <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+      
+      {/* Content above overlay */}
+      <div className="max-w-md w-full space-y-8 relative z-10">
+        {/* Single Card with Header and Login Form */}
+        <Card>
           <CardContent className="py-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-4">
+                <img 
+                  src="/logo.svg" 
+                  alt="Codifica Analytics" 
+                  className="h-16 w-auto"
+                />
+              </div>
+              <p className="text-lg font-medium text-slate-700">
+                Inteligência em dados, resultados em ação
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Faça login para acessar seus relatórios
+              </p>
+            </div>
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -154,8 +174,8 @@ export function Login() {
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} Codifica Analytics. Todos os direitos reservados.
+          <p className="text-xs text-white">
+            &copy; 2025 Codifica Analytics. Todos os direitos reservados.
           </p>
         </div>
       </div>
