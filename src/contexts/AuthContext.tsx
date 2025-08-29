@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
+  const sessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Verificar usuário atual ao inicializar
   useEffect(() => {
@@ -82,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let authSubscription: any;
     initializeAuth().then(sub => {
       authSubscription = sub;
+      
+      // Verificação periódica e de foco removidas para evitar logout desnecessário
     }).catch(error => {
       console.error('[AuthContext] Erro na inicialização:', error);
       if (timeoutRef.current) {
@@ -96,6 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
+      }
+      if (sessionCheckIntervalRef.current) {
+        clearInterval(sessionCheckIntervalRef.current);
+        sessionCheckIntervalRef.current = null;
       }
       if (authSubscription) {
         authSubscription.unsubscribe();

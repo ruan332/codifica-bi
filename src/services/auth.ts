@@ -1,7 +1,6 @@
 import { supabase, supabaseAdmin } from '../lib/supabase';
 import type { LoginCredentials, AuthUser } from '../types';
 
-
 export class AuthService {
   // Login do usuário
   static async login(credentials: LoginCredentials): Promise<AuthUser> {
@@ -53,131 +52,41 @@ export class AuthService {
     console.log('[AuthService] Logout do Supabase concluído com sucesso');
   }
 
-  // Obter usuário atual
+  // Obter usuário atual - VERSÃO COMPLETAMENTE NOVA
   static async getCurrentUser(): Promise<AuthUser | null> {
+    console.log('[AuthService] VERSÃO FINAL - Iniciando verificação de usuário atual...');
+    
     try {
-      console.log('[AuthService] Iniciando verificação de usuário atual...');
+      // Obter sessão atual
+      const { data: { session } } = await supabase.auth.getSession();
       
-      
-      // Timeout para evitar travamento
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout na verificação do usuário')), 8000);
-      });
-      
-      const getUserPromise = supabase.auth.getUser();
-      
-      const { data: { user }, error: authError } = await Promise.race([
-        getUserPromise,
-        timeoutPromise
-      ]);
-      
-      if (authError) {
-        console.error('[AuthService] Erro na autenticação:', authError);
+      if (!session?.user) {
+        console.log('[AuthService] Nenhuma sessão ativa encontrada');
         return null;
       }
       
-      if (!user) {
-        console.log('[AuthService] Nenhum usuário autenticado encontrado');
+      console.log('[AuthService] Usuário da sessão encontrado:', session.user.id);
+
+      // Buscar dados do usuário na tabela users
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, email, role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!userData) {
+        console.warn('[AuthService] Dados do usuário não encontrados na tabela users');
         return null;
       }
 
-      console.log('[AuthService] Usuário autenticado encontrado:', user.id);
-
-      // Buscar dados adicionais do usuário na tabela users com retry
-      console.log('[AuthService] Buscando dados do usuário na tabela users...');
-      
-      let retryCount = 0;
-      const maxRetries = 2;
-      
-      while (retryCount <= maxRetries) {
-        try {
-          let userData = null;
-          let error = null;
-
-          // Estratégia 1: Buscar por ID
-          console.log('[AuthService] Tentativa 1: Buscar por ID:', user.id);
-          const idResult = await supabase
-            .from('users')
-            .select('id, email, role')
-            .eq('id', user.id)
-            .single();
-
-          if (!idResult.error && idResult.data) {
-            userData = idResult.data;
-            console.log('[AuthService] Usuário encontrado por ID:', userData);
-          } else {
-            console.log('[AuthService] Busca por ID falhou:', idResult.error?.message);
-            
-            // Estratégia 2: Buscar por email
-            console.log('[AuthService] Tentativa 2: Buscar por email:', user.email);
-            const emailResult = await supabase
-              .from('users')
-              .select('id, email, role')
-              .eq('email', user.email)
-              .single();
-
-            if (!emailResult.error && emailResult.data) {
-              userData = emailResult.data;
-              console.log('[AuthService] Usuário encontrado por email:', userData);
-            } else {
-              console.log('[AuthService] Busca por email falhou:', emailResult.error?.message);
-              error = emailResult.error;
-            }
-          }
-
-          if (userData) {
-            console.log('[AuthService] Dados do usuário carregados com sucesso:', userData);
-            return {
-              id: user.id, // Sempre usar o ID do auth.users para consistência
-              email: userData.email,
-              role: userData.role,
-            };
-          }
-
-          if (error) {
-            console.error(`[AuthService] Erro ao buscar dados do usuário (tentativa ${retryCount + 1}):`, error);
-            
-            // Códigos de erro que indicam problemas estruturais
-            if (error.code === 'PGRST116' || // Tabela não encontrada
-                error.code === '42P01' ||   // Tabela não existe
-                error.code === '42501') {   // Permissão negada
-              console.error('[AuthService] Problema estrutural detectado:', error);
-              throw new Error('Erro de configuração do banco de dados');
-            }
-            
-            // Para outros erros, tentar novamente
-            if (retryCount < maxRetries) {
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              continue;
-            }
-            
-            return null;
-          }
-
-          console.warn('[AuthService] Dados do usuário não encontrados na tabela users');
-          return null;
-        } catch (queryError) {
-          console.error(`[AuthService] Erro na consulta (tentativa ${retryCount + 1}):`, queryError);
-          if (retryCount < maxRetries) {
-            retryCount++;
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-          } else {
-            throw queryError;
-          }
-        }
-      }
-      
-      return null;
+      console.log('[AuthService] Dados do usuário carregados com sucesso:', userData);
+      return {
+        id: session.user.id,
+        email: userData.email,
+        role: userData.role,
+      };
     } catch (error: any) {
       console.error('[AuthService] Erro inesperado ao obter usuário atual:', error);
-      
-      // Se houve timeout ou erro crítico, retornar null
-      if (error.message?.includes('Timeout') || error.name === 'AbortError') {
-        console.error('[AuthService] Timeout detectado:', error);
-        return null;
-      }
-      
       return null;
     }
   }
@@ -286,7 +195,6 @@ export class AuthService {
     try {
       console.log('[AuthService] Configurando listener de mudanças de autenticação...');
       
-      console.log('[AuthService] Configurando listener do Supabase...');
       return supabase.auth.onAuthStateChange(async (event, session) => {
         try {
           console.log('[AuthService] 🔔 Evento de autenticação recebido:', event);
@@ -300,9 +208,30 @@ export class AuthService {
           
           if (session?.user) {
             console.log('[AuthService] Sessão ativa, buscando dados do usuário...');
-            const user = await this.getCurrentUser();
-            console.log('[AuthService] Dados do usuário obtidos:', user);
-            callback(user);
+            
+            // Buscar dados do usuário diretamente
+            try {
+              const { data: userData } = await supabase
+                .from('users')
+                .select('id, email, role')
+                .eq('id', session.user.id)
+                .single();
+
+              if (userData) {
+                console.log('[AuthService] Dados do usuário obtidos:', userData);
+                callback({
+                  id: session.user.id,
+                  email: userData.email,
+                  role: userData.role,
+                });
+                return;
+              }
+            } catch (error) {
+              console.error('[AuthService] Erro ao buscar dados do usuário:', error);
+            }
+            
+            console.log('[AuthService] Não foi possível obter dados do usuário');
+            callback(null);
           } else {
             console.log('[AuthService] Nenhuma sessão ativa, retornando null');
             callback(null);
@@ -314,7 +243,6 @@ export class AuthService {
       });
     } catch (error) {
       console.error('[AuthService] Erro ao configurar listener de autenticação:', error);
-      // Retornar um objeto para evitar erros
       return {
         data: {
           subscription: {

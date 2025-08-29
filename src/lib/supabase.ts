@@ -19,7 +19,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Configurações adicionais para melhor gerenciamento de sessão
+    storage: window.localStorage,
+    storageKey: 'supabase.auth.token'
   }
 });
 
