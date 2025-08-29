@@ -64,8 +64,11 @@ export function Header() {
               to={isAdmin ? '/admin' : '/dashboard'} 
               className="flex items-center gap-2 text-slate-800 hover:text-slate-600 transition-colors"
             >
-              <BarChart3 className="h-8 w-8" />
-              <span className="text-xl font-bold hidden sm:block">Codifica Analytics</span>
+              <img 
+                src="/logo.svg" 
+                alt="Codifica Analytics" 
+                className="h-8 w-auto"
+              />
             </Link>
           </div>
 

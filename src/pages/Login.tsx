@@ -76,11 +76,15 @@ export function Login() {
           {/* Header */}
         <div className="text-center">
           <div className="flex justify-center">
-            <BarChart3 className="h-12 w-12 text-slate-800" />
+            <img 
+              src="/logo.svg" 
+              alt="Codifica Analytics" 
+              className="h-16 w-auto"
+            />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-slate-900">
-            Codifica Analytics
-          </h2>
+          <p className="mt-4 text-lg font-medium text-slate-700">
+            Inteligência em dados, resultados em ação
+          </p>
           <p className="mt-2 text-sm text-slate-600">
             Faça login para acessar seus relatórios
           </p>
