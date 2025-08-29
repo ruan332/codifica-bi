@@ -96,7 +96,7 @@ export function ReportView() {
   }
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-white' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-white' : 'min-h-screen px-4 sm:px-6 lg:px-8 py-8'}`}>
       {/* Header */}
       <div className={`${isFullscreen ? 'p-4' : 'mb-6'} flex items-center justify-between`}>
         <div className="flex items-center space-x-4">
@@ -145,7 +145,7 @@ export function ReportView() {
       </div>
 
       {/* Report Content */}
-      <div className={`${isFullscreen ? 'h-[calc(100vh-80px)]' : 'h-[600px] lg:h-[700px]'} bg-white rounded-lg border border-slate-200 overflow-hidden`}>
+      <div className={`${isFullscreen ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-200px)] min-h-[800px]'} bg-white rounded-lg border border-slate-200 overflow-hidden`}>
         {report.iframe_code ? (
           <div 
             key={iframeKey}
