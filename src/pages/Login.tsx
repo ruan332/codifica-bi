@@ -155,7 +155,7 @@ export function Login() {
         {/* Footer */}
         <div className="text-center">
           <p className="text-xs text-slate-500">
-            &copy; 2024 Codifica Analytics. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} Codifica Analytics. Todos os direitos reservados.
           </p>
         </div>
       </div>
